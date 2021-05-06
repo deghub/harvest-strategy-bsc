@@ -3,6 +3,7 @@
 pragma solidity 0.6.12;
 
 import "./interface/IMultiStrategyToken.sol";
+import "./interface/IMultiStrategyTokenImpl.sol";
 import "./interface/IDepositor.sol";
 
 import "@pancakeswap/pancake-swap-lib/contracts/token/BEP20/IBEP20.sol";
@@ -54,7 +55,7 @@ contract BeltSingleAssetStrategy is BaseUpgradeableStrategy {
   }
 
   function rewardPoolBalance() internal view returns (uint256) {
-      return IBEP20(rewardPool()).balanceOf(address(this));
+      return IMultiStrategyTokenImpl(rewardPool()).balanceOf(address(this));
   }
 
   function unsalvagableTokens(address token) public view returns (bool) {
@@ -66,7 +67,7 @@ contract BeltSingleAssetStrategy is BaseUpgradeableStrategy {
     IBEP20(underlying()).safeApprove(rewardPool(), 0);
     IBEP20(underlying()).safeApprove(rewardPool(), entireBalance);
 
-    IMultiStrategyToken(rewardPool()).deposit(entireBalance, 0);
+    IMultiStrategyTokenImpl(rewardPool()).deposit(entireBalance, 0);
   }
 
   /*
@@ -114,8 +115,11 @@ contract BeltSingleAssetStrategy is BaseUpgradeableStrategy {
   }
 
   function claimAndLiquidateReward() internal {
-    IMultiStrategyToken(rewardPool()).withdraw(0, 0);
+    uint256 amount = rewardPoolBalance();
+    if (amount != 0) {
+      IMultiStrategyToken(rewardPool()).withdraw(amount, 0);
     _liquidateReward();
+    }
     // if (IBEP20(busd).balanceOf(address(this)) > 0) {
     //   beltFromBusd();
     // }
@@ -153,7 +157,7 @@ contract BeltSingleAssetStrategy is BaseUpgradeableStrategy {
       uint256 bal = rewardPoolBalance();
       if (bal != 0) {
         claimAndLiquidateReward();
-        IMultiStrategyToken(rewardPool()).withdraw(bal, 0);
+        IMultiStrategyTokenImpl(rewardPool()).withdraw(bal, 0);
       }
     }
     IBEP20(underlying()).safeTransfer(vault(), IBEP20(underlying()).balanceOf(address(this)));
@@ -172,7 +176,7 @@ contract BeltSingleAssetStrategy is BaseUpgradeableStrategy {
       // for the peace of mind (in case something gets changed in between)
       uint256 needToWithdraw = amount.sub(entireBalance);
       uint256 toWithdraw = MathUpgradeable.min(rewardPoolBalance(), needToWithdraw);
-      IMultiStrategyToken(rewardPool()).withdraw(toWithdraw, 0);
+      IMultiStrategyTokenImpl(rewardPool()).withdraw(toWithdraw, 0);
     }
 
     IBEP20(underlying()).safeTransfer(vault(), amount);
